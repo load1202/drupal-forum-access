@@ -2,10 +2,15 @@
 
 /**
  * @file
- * Contains forum_access.module..
+ * Contains forum_access.module.
  */
 
 use Drupal\Core\Routing\RouteMatchInterface;
+use Symfony\Component\Routing\Route;
+
+require_once __DIR__ . '/includes/forum_access.acl.inc';
+require_once __DIR__ . '/includes/forum_access.admin.inc';
+require_once __DIR__ . '/includes/forum_access.node.inc';
 
 /**
  * Implements hook_help().
@@ -17,8 +22,12 @@ function forum_access_help($route_name, RouteMatchInterface $route_match) {
       $output = '';
       $output .= '<h3>' . t('About') . '</h3>';
       $output .= '<p>' . t('Allows forums to be set private and to be given moderators.') . '</p>';
+
+      $router = \Drupal::service('router.no_access_checks');
+      $result = $router->match('/forum');
       return $output;
 
     default:
   }
 }
+
