@@ -11,6 +11,7 @@ use Symfony\Component\Routing\Route;
 require_once __DIR__ . '/includes/forum_access.acl.inc';
 require_once __DIR__ . '/includes/forum_access.admin.inc';
 require_once __DIR__ . '/includes/forum_access.node.inc';
+require_once __DIR__ . '/includes/forum_access.theme.inc';
 
 /**
  * Implements hook_help().
@@ -31,3 +32,13 @@ function forum_access_help($route_name, RouteMatchInterface $route_match) {
   }
 }
 
+/**
+ * Implements hook_theme().
+ */
+function forum_access_theme($existing, $type, $theme, $path) {
+  $result['forum_access_table'] = array(
+    'render element' => 'form',
+  );
+
+  return $result;
+}

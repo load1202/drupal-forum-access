@@ -5,18 +5,22 @@
  * Contains integrations with forms.
  */
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\taxonomy\Entity\Vocabulary;
 
 /**
  * Implements hook_form_FORM_ID_alter().
  */
 function forum_access_form_taxonomy_term_forums_forum_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
   $tid = $form['tid']['#value'];
+  $settings = _forum_access_get_settings($tid);
 
   // Basic fieldset.
   _forum_access_basic_taxonomy_term_fieldset($form);
 
   // Moderators fields.
   $form['forum_access']['permissions'] = _forum_access_forum_permissions_form();
+  $form['forum_access']['grants'] = _forum_access_forum_grants_form($form_state, $settings);
   $form['forum_access']['moderators'] = _forum_access_forum_moderators_form($form_state, $tid);
   $form['actions']['submit']['#submit'][] = '_forum_access_form_submit';
 }
@@ -27,7 +31,7 @@ function forum_access_form_taxonomy_term_forums_forum_form_alter(&$form, \Drupal
 function _forum_access_basic_taxonomy_term_fieldset(&$form) {
   // Add access fields to forum sections.
   $form['forum_access'] = array(
-    '#type' => 'fieldset',
+    '#type' => 'details',
     '#title' => t('Access control'),
     '#collapsible' => TRUE,
     '#tree' => TRUE,
@@ -59,6 +63,9 @@ function _forum_access_forum_moderators_form($form_state, $tid) {
  * Submit handler for forum access administrative form.
  */
 function _forum_access_form_submit($form, FormStateInterface $form_state) {
+  // Save roles permissions.
+  _forum_access_form_roles_permissions_save($form_state);
+
   // Save moderators list.
   _forum_access_form_moderators_save($form_state);
 }
@@ -72,6 +79,49 @@ function _forum_access_form_moderators_save(FormStateInterface $form_state) {
   if (!empty($data)) {
     acl_save_form($data, 0);
   }
+}
+
+/**
+ * Save roles permissions.
+ */
+function _forum_access_form_roles_permissions_save(FormStateInterface $form_state) {
+  $access = $form_state->getValue(['forum_access', 'grants', 'checkboxes']);
+
+  // Remove and re-create records.
+  $tid = $form_state->getValue('tid');
+
+  \Drupal::database()->delete('forum_access')
+    ->condition('tid', $tid)
+    ->execute();
+
+  // Insert new values.
+  $insert = \Drupal::database()->insert('forum_access');
+  $insert->fields(
+    array(
+      'tid',
+      'rid',
+      'grant_view',
+      'grant_update',
+      'grant_delete',
+      'grant_create',
+      'priority'
+    )
+  );
+
+  foreach ($access['view'] as $rid => $checked) {
+    $insert->values(
+      array(
+        'tid' => $tid,
+        'rid' => $rid,
+        'grant_view' => (int) !empty($checked),
+        'grant_update' => (int) !empty($access['update'][$rid]),
+        'grant_delete' => (int) !empty($access['delete'][$rid]),
+        'grant_create' => (int) !empty($access['create'][$rid]),
+        'priority' => 0,
+      )
+    );
+  }
+  $insert->execute();
 }
 
 /**
@@ -117,7 +167,7 @@ function _forum_access_forum_permissions_form() {
   }
 
   $form = array(
-    '#type' => 'fieldset',
+    '#type' => 'details',
     '#title' => t('Permissions information'),
     '#collapsible' => TRUE,
     '#collapsed' => TRUE,
@@ -162,4 +212,130 @@ function _forum_access_permission_link($module, $permission) {
   }
 
   return $permissions[$module][$permission];
+}
+
+/**
+ * Retrieve the settings for a taxonomy term.
+ */
+function _forum_access_get_settings($tid = NULL) {
+  $settings = array(
+    'view' => array(),
+    'create' => array(),
+    'update' => array(),
+    'delete' => array(),
+    'priority' => 0
+  );
+
+  $result = \Drupal::database()->select('forum_access', 'a')
+    ->fields('a', array('tid', 'rid', 'grant_view', 'grant_update', 'grant_delete', 'grant_create', 'priority'))
+    ->condition('tid', $tid)
+    ->execute();
+
+  foreach ($result as $access) {
+    if ($access->grant_view) {
+      $settings['view'][] = $access->rid;
+    }
+    if ($access->grant_update) {
+      $settings['update'][] = $access->rid;
+    }
+    if ($access->grant_delete) {
+      $settings['delete'][] = $access->rid;
+    }
+    if ($access->grant_create) {
+      $settings['create'][] = $access->rid;
+    }
+    if ($access->rid == AccountInterface::AUTHENTICATED_ROLE) { // this is our reference
+      $settings['priority'] = $access->priority;
+    }
+  }
+  return $settings;
+}
+
+/**
+ * Get form table with roles grants.
+ */
+function _forum_access_forum_grants_form($form_state, $settings) {
+  $roles = user_roles();
+  $administer_forums_roles = user_roles(FALSE, 'administer forums');
+  $bypass_node_access_roles = user_roles(FALSE, 'bypass node access');
+
+  $vid = \Drupal::config('forum.settings')->get('vocabulary');
+  $vocabulary = Vocabulary::load($vid);
+
+  $cols = array(
+    'view'   => t('View this forum'),
+    'create' => t('Post in this forum'),
+    'update' => t('Edit posts'),
+    'delete' => t('Delete posts'),
+  );
+  $form = array(
+    '#theme' => 'forum_access_table',
+  );
+
+  // Build table rows.
+  foreach ($roles as $rid => $role) {
+    $form['rows'][$rid]['label'] = array(
+      '#type' => 'item',
+      // @todo Add check_plain.
+      '#markup' => $role->label(),
+    );
+
+    $special = NULL;
+    if (isset($administer_forums_roles[$rid])) {
+      $special = t("This role has the '@administer_forums' permission, and granting 'View' enables the role holders to change the settings on this page, including Access Control!",
+        array(
+          '@administer_forums' => t('administer forums')
+        )
+      );
+
+      if (isset($bypass_node_access_roles[$rid])) {
+        $special .= ' ' . t("Because the role also has the '@bypass_node_access' permission, it has full access to all nodes either way.",
+          array(
+            '@bypass_node_access' => t('bypass node access')
+          )
+        );
+      }
+    }
+    elseif (isset($bypass_node_access_roles[$rid])) {
+      $special = t("This role has the '@bypass_node_access' permission and thus full access to all nodes.",
+        array(
+          '@bypass_node_access' => t('bypass node access')
+        )
+      );
+    }
+
+    if (isset($special)) {
+      $form['rows'][$rid] += array(
+        '#prefix' => '<em><span title="' . $special . '" class="forum-access-special-role">',
+        '#suffix' => '</span></em>',
+        '#disabled' => TRUE,
+      );
+    }
+    $roles[$rid] = '';
+  }
+
+  $form['header']['roles'] = array(
+    '#markup' => t('Roles'),
+    '#tree'   => TRUE,
+  );
+
+  // Add checkboxes.
+  foreach ($cols as $cid => $ctitle) {
+    $form['checkboxes'][$cid] = array(
+      '#type'          => 'checkboxes',
+      '#options'       => $roles,
+      '#default_value' => $settings[$cid],
+    );
+    $form['header'][$cid] = array(
+      '#markup' => $ctitle,
+      '#tree'   => TRUE,
+    );
+  }
+
+  $form['info1'] = array(
+    '#type'            => 'item',
+    '#description'     => t('For explanations of <em class="placeholder">special cases</em>, hover your mouse over role names.'),
+  );
+
+  return $form;
 }
