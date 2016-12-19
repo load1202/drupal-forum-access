@@ -10,6 +10,7 @@ use Symfony\Component\Routing\Route;
 
 require_once __DIR__ . '/includes/forum_access.acl.inc';
 require_once __DIR__ . '/includes/forum_access.admin.inc';
+require_once __DIR__ . '/includes/forum_access.common.inc';
 require_once __DIR__ . '/includes/forum_access.node.inc';
 require_once __DIR__ . '/includes/forum_access.theme.inc';
 

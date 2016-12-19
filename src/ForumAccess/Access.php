@@ -14,9 +14,9 @@ class Access {
    * Access check for forum index page.
    */
   public function forumIndex(AccountInterface $account) {
-    // Check if user is moderator at least in one forum.
-    $acl_moderate = acl_get_ids_by_user('forum_access', $account->id(), 'moderate');
-    if (!empty($acl_moderate)) {
+    $view_access = forum_access_forum_check_view($account);
+
+    if (!empty($view_access)) {
       return AccessResult::allowedIf(TRUE);
     }
 
@@ -27,9 +27,9 @@ class Access {
    * Access check for specific forum page.
    */
   public function forumPage(AccountInterface $account, TermInterface $taxonomy_term) {
-    // Check if user is moderator at least in one forum.
-    $acl_moderate = acl_get_ids_by_user('forum_access', $account->id(), 'moderate', $taxonomy_term->id());
-    if (!empty($acl_moderate)) {
+    $view_access = forum_access_forum_check_view($account, $taxonomy_term->id());
+
+    if (!empty($view_access)) {
       return AccessResult::allowedIf(TRUE);
     }
 

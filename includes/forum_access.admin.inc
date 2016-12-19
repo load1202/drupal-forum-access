@@ -129,11 +129,13 @@ function _forum_access_form_roles_permissions_save(FormStateInterface $form_stat
  */
 function forum_access_form_taxonomy_term_forums_container_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
   $tid = $form['tid']['#value'];
+  $settings = _forum_access_get_settings($tid);
 
   // Basic fieldset.
   _forum_access_basic_taxonomy_term_fieldset($form);
 
   // Moderators fields.
+  $form['forum_access']['grants'] = _forum_access_container_grants_form($form_state, $settings);
   $form['forum_access']['moderators'] = _forum_access_forum_moderators_form($form_state, $tid);
   $form['actions']['submit']['#submit'][] = '_forum_access_form_submit';
 }
@@ -268,6 +270,49 @@ function _forum_access_forum_grants_form($form_state, $settings) {
     'update' => t('Edit posts'),
     'delete' => t('Delete posts'),
   );
+
+  _forum_access_grants_form_elements($form, $roles, $administer_forums_roles, $bypass_node_access_roles, $cols, $settings);
+
+  $form['info'] = array(
+    '#type'            => 'item',
+    '#description'     => t('For explanations of <em class="placeholder">special cases</em>, hover your mouse over role names.'),
+  );
+
+  return $form;
+}
+
+/**
+ * Get roles permissions form for container.
+ */
+function _forum_access_container_grants_form($form_state, $settings) {
+  $roles = user_roles();
+  $administer_forums_roles = user_roles(FALSE, 'administer forums');
+  $bypass_node_access_roles = user_roles(FALSE, 'bypass node access');
+
+  $vid = \Drupal::config('forum.settings')->get('vocabulary');
+  $vocabulary = Vocabulary::load($vid);
+
+  $cols = array(
+    'view'   => t('View this container'),
+    'create' => t('See this container in the forums selection list'),
+  );
+
+  _forum_access_grants_form_elements($form, $roles, $administer_forums_roles, $bypass_node_access_roles, $cols, $settings);
+
+  $form['info'] = array(
+    '#type' => 'item',
+    '#description' => t('Users who can see any forum or container within this one should get the <strong><em>View</em></strong> grant. <br />
+      Users who can post to a forum within this container should get the <strong><em>See</em></strong> grant, so that the forum appears in the proper context in the %Forums selection list.',
+      array('%Forums' => $vocabulary->label())),
+  );
+
+  return $form;
+}
+
+/**
+ * Common grants form elements for forum and container.
+ */
+function _forum_access_grants_form_elements(&$form, $roles, $administer_forums_roles, $bypass_node_access_roles, $cols, $settings) {
   $form = array(
     '#theme' => 'forum_access_table',
   );
@@ -331,11 +376,4 @@ function _forum_access_forum_grants_form($form_state, $settings) {
       '#tree'   => TRUE,
     );
   }
-
-  $form['info1'] = array(
-    '#type'            => 'item',
-    '#description'     => t('For explanations of <em class="placeholder">special cases</em>, hover your mouse over role names.'),
-  );
-
-  return $form;
 }
