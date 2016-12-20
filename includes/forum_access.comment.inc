@@ -18,6 +18,7 @@ function forum_access_query_comment_filter_alter(Drupal\Core\Database\Query\Alte
     return;
   }
 
+  // @todo Replace it with the function.
   $tid = $entity->get('taxonomy_forums')->first()->getValue()['target_id'];
   $access = array(
     'update' => forum_access_access('update', $tid),
@@ -75,14 +76,4 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
   }
 
   return AccessResult::allowedIf(FALSE);
-}
-
-/**
- * Check access for comment reply.
- */
-function forum_access_comment_access_reply($parent) {
-  if ($tid = _forum_access_get_tid($parent)) {
-    return forum_access_access('create', $tid);
-  }
-  return TRUE;
 }
