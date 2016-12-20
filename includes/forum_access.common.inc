@@ -130,3 +130,10 @@ function forum_access_access($op, $tid, $account = NULL) {
 
   return $cache[$account->id()][$tid][$op];
 }
+
+/**
+ * Get forum tid from entity.
+ */
+function _forum_access_get_tid($entity) {
+  return $entity->get('taxonomy_forums')->first()->getValue()['target_id'];
+}
