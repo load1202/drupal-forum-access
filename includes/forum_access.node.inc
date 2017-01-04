@@ -13,8 +13,7 @@ use Drupal\Core\Access\AccessResult;
  * roles as ACLs, so rids translate directly to gids.
  */
 function forum_access_node_grants(\Drupal\Core\Session\AccountInterface $account, $op) {
-  $roles = $account->getRoles();
-  // Gid can be only numeric so we convert role mchine_name to integer.
+  // @todo Gid can be only numeric so we convert role mchine_name to integer.
   $grants['forum_access'] = $account->getRoles();
   return $grants;
 }
