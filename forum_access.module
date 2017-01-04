@@ -13,7 +13,9 @@ require_once __DIR__ . '/includes/forum_access.admin.inc';
 require_once __DIR__ . '/includes/forum_access.comment.inc';
 require_once __DIR__ . '/includes/forum_access.common.inc';
 require_once __DIR__ . '/includes/forum_access.node.inc';
+require_once __DIR__ . '/includes/forum_access.taxonomy.inc';
 require_once __DIR__ . '/includes/forum_access.theme.inc';
+require_once __DIR__ . '/includes/forum_access.user.inc';
 
 /**
  * Implements hook_help().
