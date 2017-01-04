@@ -62,8 +62,8 @@ function forum_access_access($op, $tid, $account = NULL) {
   }
 
   if (!isset($cache[$account->id()][$tid][$op])) {
-    // Check if user's role's allow him permissions to operators.
-    $query = Drupal::database()->select('forum_access', 'fa')
+    // Check if user's roles allow him permissions to operators.
+    $query = \Drupal::database()->select('forum_access', 'fa')
       ->fields('fa', array('tid'));
 
     forum_access_modify_check_query($query, array(
@@ -96,4 +96,17 @@ function forum_access_access($op, $tid, $account = NULL) {
  */
 function _forum_access_get_tid($entity) {
   return $entity->get('taxonomy_forums')->first()->getValue()['target_id'];
+}
+
+/**
+ * Get all grants for speific tid.
+ */
+function forum_access_get_grants_by_tid($tid) {
+  $result = \Drupal::database()->select('forum_access', 'fa')
+    ->fields('fa')
+    ->condition('tid', $tid)
+    ->execute()
+    ->fetchAll();
+
+  return $result;
 }
