@@ -14,7 +14,8 @@ use Drupal\Core\Access\AccessResult;
  */
 function forum_access_node_grants(\Drupal\Core\Session\AccountInterface $account, $op) {
   // @todo Gid can be only numeric so we convert role mchine_name to integer.
-  $grants['forum_access'] = $account->getRoles();
+  $roles_gids = \Drupal::configFactory()->getEditable('forum_access.settings')->get('forum_access_roles_gids');
+  $grants['forum_access'] = $roles_gids;
   return $grants;
 }
 
@@ -30,6 +31,7 @@ function forum_access_node_access_records(\Drupal\node\NodeInterface $node) {
   $grants = &drupal_static(__FUNCTION__, array());
   $seers = &drupal_static(__FUNCTION__ . '__seers');
   $tid = _forum_access_get_tid($node);
+  $roles_gids = \Drupal::configFactory()->getEditable('forum_access.settings')->get('forum_access_roles_gids');
 
   if ($tid) {
     if (!isset($grants[$tid])) {
@@ -43,7 +45,8 @@ function forum_access_node_access_records(\Drupal\node\NodeInterface $node) {
         }
         $grants[$tid][] = array(
           'realm'        => 'forum_access',
-          'gid'          => $grant->rid,
+          // We change machine_name of role to its numeric equivalent.
+          'gid'          => $roles_gids[$grant->rid],
           'grant_view'   => $grant->grant_view,
           'grant_update' => $grant->grant_update,
           'grant_delete' => $grant->grant_delete,

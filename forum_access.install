@@ -6,6 +6,8 @@
  * Install file.
  */
 use Drupal\Core\Session\AccountInterface;
+use Drupal\user\Entity\Role;
+
 /**
  * Implements hook_schema().
  */
@@ -13,7 +15,7 @@ function forum_access_schema() {
   $schema['forum_access'] = array(
     'description' => 'The Forum Access control table.',
     'fields' => array(
-        'tid' => array(
+      'tid' => array(
         'description' => 'The {taxonomy_term_data}.tid to which this {forum_access} entry applies.',
         'type' => 'int',
         'not null' => TRUE,
@@ -106,4 +108,18 @@ function forum_access_install() {
       }
     }
   }
+
+  // Add integer accordance to roles. We need it for hook_node grants which understands only integer as gid.
+  $config = \Drupal::configFactory()->getEditable('forum_access.settings');
+  $roles_gids = array();
+
+  $roles = Role::loadMultiple();
+  $i = 1;
+  foreach ($roles as $role) {
+    $roles_gids[$role->id()] = $i;
+    $i++;
+  }
+
+  $config->set('forum_access_roles_gids', $roles_gids);
+  $config->save();
 }
