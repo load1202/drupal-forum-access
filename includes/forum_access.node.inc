@@ -5,6 +5,23 @@
  * Integration with node system.
  */
 use Drupal\Core\Access\AccessResult;
+use Drupal\node\Entity\Node;
+
+/**
+ * Implements hook_ENTITY_TYPE_create_access().
+ */
+function forum_access_node_create_access(\Drupal\Core\Session\AccountInterface $account, array $context, $entity_bundle) {
+  if ($entity_bundle != 'forum') {
+    return AccessResult::neutral();
+  }
+
+  $tid = forum_access_current_tid();
+  if (!forum_access_access('create', $tid, $account)) {
+    return AccessResult::forbidden();
+  }
+
+  return AccessResult::neutral();
+}
 
 /**
  * Implements hook_node_grants().
@@ -13,7 +30,6 @@ use Drupal\Core\Access\AccessResult;
  * roles as ACLs, so rids translate directly to gids.
  */
 function forum_access_node_grants(\Drupal\Core\Session\AccountInterface $account, $op) {
-  // @todo Gid can be only numeric so we convert role mchine_name to integer.
   $roles_gids = \Drupal::configFactory()->getEditable('forum_access.settings')->get('forum_access_roles_gids');
   $grants['forum_access'] = $roles_gids;
   return $grants;
@@ -58,5 +74,20 @@ function forum_access_node_access_records(\Drupal\node\NodeInterface $node) {
     if (isset($grants[$tid])) {
       return $grants[$tid];
     }
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_view_alter().
+ */
+function forum_access_node_view_alter(array &$build, Drupal\Core\Entity\EntityInterface $entity, \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display) {
+  $account = \Drupal::currentUser();
+  if ($entity->bundle() != 'forum') {
+    return;
+  }
+
+  // Don't show comment form is user has no access to it.
+  if (!$entity->access('create', $account)) {
+    $build['comment_forum'][0]['comment_form'] = array();
   }
 }

@@ -54,6 +54,7 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
     return AccessResult::neutral();
   }
 
+
   // @todo Check for Reply.
   // @todo Check for approve.
   if ($account->hasPermission('administer comments')) {
@@ -75,5 +76,6 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
     }
   }
 
+  // @todo if this works as expected.
   return AccessResult::allowedIf(FALSE);
 }

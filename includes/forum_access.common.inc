@@ -110,3 +110,27 @@ function forum_access_get_grants_by_tid($tid) {
 
   return $result;
 }
+
+/**
+ * Returns the forum TID, if we're on a forum-specific page.
+ */
+function forum_access_current_tid() {
+  $tid = &drupal_static(__FUNCTION__);
+
+  if (empty($tid)) {
+    $context_repository = Drupal::service('context.repository');
+
+    $contexts = $context_repository->getRuntimeContexts(
+      array(
+        '@node.node_route_context:node',
+      )
+    );
+
+    // Check if we are on node forum topic page.
+    if ($node = $contexts['@node.node_route_context:node']->getContextValue()) {
+      $tid = _forum_access_get_tid($node);
+    }
+  }
+
+  return $tid;
+}
