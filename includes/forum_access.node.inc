@@ -6,6 +6,7 @@
  */
 use Drupal\Core\Access\AccessResult;
 use Drupal\node\Entity\Node;
+use Drupal\node\NodeInterface;
 
 /**
  * Implements hook_ENTITY_TYPE_create_access().
@@ -89,5 +90,17 @@ function forum_access_node_view_alter(array &$build, Drupal\Core\Entity\EntityIn
   // Don't show comment form is user has no access to it.
   if (!$entity->access('create', $account)) {
     $build['comment_forum'][0]['comment_form'] = array();
+  }
+}
+
+/**
+ * Implements hook_node_links_alter().
+ */
+function forum_access_node_links_alter(array &$links, NodeInterface $entity, array &$context) {
+  $account = \Drupal::currentUser();
+
+   // Don't show Comment link is user has no access to it.
+  if (!$entity->access('create', $account)) {
+    unset($links['comment__comment_forum']);
   }
 }
