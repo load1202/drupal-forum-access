@@ -9,6 +9,30 @@ use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 
 /**
+ * Implements hook_node_access().
+ */
+function forum_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal\Core\Session\AccountInterface $account) {
+  if ($node->bundle() != 'forum') {
+    return AccessResult::neutral();
+  }
+
+  switch($op) {
+    case 'view':
+    case 'update':
+    case 'delete':
+      if (forum_access_entity_access_by_tid($op, $node)) {
+        return AccessResult::allowed();
+      }
+      else {
+        return AccessResult::forbidden();
+      }
+      break;
+  }
+
+  return AccessResult::neutral();
+}
+
+/**
  * Implements hook_node_grants().
  *
  * This function supplies the forum access grants. forum_access simply uses
