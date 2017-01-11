@@ -54,7 +54,6 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
     return AccessResult::neutral();
   }
 
-  // @todo Check for Reply.
   // @todo Check for approve.
   if ($account->hasPermission('administer comments')) {
     return AccessResult::neutral();
@@ -77,4 +76,22 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
 
   // @todo if this works as expected.
   return AccessResult::allowedIf(FALSE);
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_create_access().
+ */
+function forum_access_comment_create_access(\Drupal\Core\Session\AccountInterface $account, array $context, $entity_bundle) {
+  if ($entity_bundle != 'comment_forum') {
+    return AccessResult::neutral();
+  }
+
+  // Get current tid.
+  if ($tid = forum_access_current_tid()) {
+    if (forum_access_access('create', $tid)) {
+      return AccessResult::allowedIf(TRUE);
+    }
+  }
+
+  return AccessResult::forbidden();
 }
