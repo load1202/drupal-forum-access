@@ -99,7 +99,7 @@ function _forum_access_get_tid($entity) {
 }
 
 /**
- * Get all grants for speific tid.
+ * Get all grants for specific tid.
  */
 function forum_access_get_grants_by_tid($tid) {
   $result = \Drupal::database()->select('forum_access', 'fa')
@@ -112,25 +112,10 @@ function forum_access_get_grants_by_tid($tid) {
 }
 
 /**
- * Returns the forum TID, if we're on a forum-specific page.
+ * Check access for entity.
  */
-function forum_access_current_tid() {
-  $tid = &drupal_static(__FUNCTION__);
+function forum_access_entity_access_by_tid($op, $entity) {
+  $tid = _forum_access_get_tid($entity);
 
-  if (empty($tid)) {
-    $context_repository = Drupal::service('context.repository');
-
-    $contexts = $context_repository->getRuntimeContexts(
-      array(
-        '@node.node_route_context:node',
-      )
-    );
-
-    // Check if we are on node forum topic page.
-    if ($node = $contexts['@node.node_route_context:node']->getContextValue()) {
-      $tid = _forum_access_get_tid($node);
-    }
-  }
-
-  return $tid;
+  return forum_access_access($op, $tid);
 }

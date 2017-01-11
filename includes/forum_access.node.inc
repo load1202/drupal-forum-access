@@ -9,22 +9,6 @@ use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 
 /**
- * Implements hook_ENTITY_TYPE_create_access().
- */
-function forum_access_node_create_access(\Drupal\Core\Session\AccountInterface $account, array $context, $entity_bundle) {
-  if ($entity_bundle != 'forum') {
-    return AccessResult::neutral();
-  }
-
-  $tid = forum_access_current_tid();
-  if (!forum_access_access('create', $tid, $account)) {
-    return AccessResult::forbidden();
-  }
-
-  return AccessResult::neutral();
-}
-
-/**
  * Implements hook_node_grants().
  *
  * This function supplies the forum access grants. forum_access simply uses
@@ -88,7 +72,7 @@ function forum_access_node_view_alter(array &$build, Drupal\Core\Entity\EntityIn
   }
 
   // Don't show comment form is user has no access to it.
-  if (!$entity->access('create', $account)) {
+  if (!forum_access_entity_access_by_tid('create', $entity)) {
     $build['comment_forum'][0]['comment_form'] = array();
   }
 }
@@ -98,9 +82,12 @@ function forum_access_node_view_alter(array &$build, Drupal\Core\Entity\EntityIn
  */
 function forum_access_node_links_alter(array &$links, NodeInterface $entity, array &$context) {
   $account = \Drupal::currentUser();
+  if ($entity->bundle() != 'forum') {
+    return;
+  }
 
-   // Don't show Comment link is user has no access to it.
-  if (!$entity->access('create', $account)) {
+  // Don't show Comment link is user has no access to it.
+  if (!forum_access_entity_access_by_tid('create', $entity)) {
     unset($links['comment__comment_forum']);
   }
 }
