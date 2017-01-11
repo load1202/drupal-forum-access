@@ -77,3 +77,24 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
   // @todo if this works as expected.
   return AccessResult::allowedIf(FALSE);
 }
+
+/**
+ * Implements hook_comment_links_alter().
+ */
+function forum_access_comment_links_alter(array &$links, CommentInterface $entity, array &$context) {
+  // Get parent entity of comment.
+  $parent = $entity->get('entity_id')->first()->get('entity')->getTarget()->getValue();
+  $account = \Drupal::currentUser();
+
+  if (!($parent->getEntityTypeId() == 'node' && $parent->bundle() == 'forum')) {
+    return;
+  }
+
+  if ($account->hasPermission('administer comments')) {
+    return;
+  }
+
+  if (!forum_access_entity_access_by_tid('create', $parent)) {
+    unset($links['comment']['#links']['comment-reply']);
+  }
+}
