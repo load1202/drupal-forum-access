@@ -10,6 +10,29 @@ use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 
 /**
+ * Implements hook_ENTITY_TYPE_create_access().
+ */
+function forum_access_node_create_access(\Drupal\Core\Session\AccountInterface $account, array $context, $entity_bundle) {
+  if ($entity_bundle != 'forum') {
+    return AccessResult::neutral();
+  }
+
+  // If we are on forum page we want to restrict access to create forum according to the forum access rules.
+  $route = \Drupal::routeMatch();
+
+  if ($route->getCurrentRouteMatch()->getRouteName() == 'forum.page') {
+    $term = $route->getParameter('taxonomy_term');
+    if (forum_access_access('create', $term->id())) {
+      return AccessResult::allowed();
+    }
+    else {
+      return AccessResult::forbidden();
+    }
+  }
+
+  return AccessResult::neutral();
+}
+/**
  * Implements hook_node_access().
  */
 function forum_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal\Core\Session\AccountInterface $account) {

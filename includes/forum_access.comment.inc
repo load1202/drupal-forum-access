@@ -66,16 +66,15 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
 
     if ($operation == 'update'
         && (forum_access_access('update', $tid) || $account->hasPermission('edit any forum content') || $is_author && $account->hasPermission('edit own forum content'))) {
-      return AccessResult::allowedIf(TRUE);
+      return AccessResult::allowed();
     }
     elseif ($operation == 'delete'
         && (forum_access_access('delete', $tid) || $account->hasPermission('delete any forum content') || $is_author && $account->hasPermission('delete own forum content'))) {
-      return AccessResult::allowedIf(TRUE);
+      return AccessResult::allowed();
     }
   }
 
-  // @todo if this works as expected.
-  return AccessResult::allowedIf(FALSE);
+  return AccessResult::forbidden();
 }
 
 /**
