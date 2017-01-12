@@ -19,7 +19,6 @@ function forum_access_node_create_access(\Drupal\Core\Session\AccountInterface $
 
   // If we are on forum page we want to restrict access to create forum according to the forum access rules.
   $route = \Drupal::routeMatch();
-
   if ($route->getCurrentRouteMatch()->getRouteName() == 'forum.page') {
     $term = $route->getParameter('taxonomy_term');
     if (forum_access_access('create', $term->id())) {
@@ -40,17 +39,37 @@ function forum_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal
     return AccessResult::neutral();
   }
 
+  // Disallow if user has no access to view.
+  if (!forum_access_entity_access_by_tid('view', $node)) {
+    return AccessResult::forbidden();
+  }
+  $author = $node->get('uid')->first()->get('entity')->getTarget()->getValue();
+
   switch($op) {
     case 'view':
+      $access = forum_access_entity_access_by_tid($op, $node);
+      break;
+
     case 'update':
-    case 'delete':
-      if (forum_access_entity_access_by_tid($op, $node)) {
-        return AccessResult::allowed();
-      }
-      else {
-        return AccessResult::forbidden();
+      if ($op == 'update' && ($account->hasPermission('edit any forum content') || ($author->id() == $account->id() && $account->hasPermission('edit own forum content')))) {
+        $access = forum_access_entity_access_by_tid('view', $node);
       }
       break;
+
+    case 'delete':
+      if ($op == 'delete' && ($account->hasPermission('delete any forum content') || ($author == $account->id() && $account->hasPermission('edit own forum content')))) {
+        $access = forum_access_entity_access_by_tid('view', $node);
+      }
+      break;
+  }
+
+  if (isset($access)) {
+    if ($access) {
+      return AccessResult::allowed();
+    }
+    else {
+      return AccessResult::forbidden();
+    }
   }
 
   return AccessResult::neutral();
