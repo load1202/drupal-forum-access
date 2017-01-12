@@ -95,7 +95,9 @@ function forum_access_access($op, $tid, $account = NULL) {
  * Get forum tid from entity.
  */
 function _forum_access_get_tid($entity) {
-  return $entity->get('taxonomy_forums')->first()->getValue()['target_id'];
+  if ($taxonomy_forum = $entity->get('taxonomy_forums')->first()) {
+    return $taxonomy_forum->getValue()['target_id'];
+  }
 }
 
 /**
@@ -118,4 +120,35 @@ function forum_access_entity_access_by_tid($op, $entity) {
   $tid = _forum_access_get_tid($entity);
 
   return forum_access_access($op, $tid);
+}
+
+/**
+ * Get forum access settings by roles and grant.
+ */
+function forum_access_get_settings_by_roles($roles, $grant) {
+  $query = \Drupal::database()->select('forum_access', 'a')
+    ->fields('a', array('tid', 'rid', 'grant_view', 'grant_update', 'grant_delete', 'grant_create', 'priority'))
+    ->condition('a.rid', $roles, 'IN');
+
+  // Add condition by grant.
+  switch ($grant) {
+    case 'view':
+      $grant_field = 'grant_view';
+      break;
+    case 'update':
+      $grant_field = 'grant_update';
+      break;
+    case 'delete':
+      $grant_field = 'grant_delete';
+      break;
+    case 'create':
+      $grant_field = 'grant_create';
+      break;
+  }
+
+  if (!empty($grant_field)) {
+    $query->condition($grant_field, 1);
+  }
+
+  return $query->execute();
 }

@@ -119,3 +119,48 @@ function forum_access_node_links_alter(array &$links, NodeInterface $entity, arr
     unset($links['comment__comment_forum']);
   }
 }
+
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function forum_access_form_node_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+  if (!isset($form['taxonomy_forums'])) {
+    return;
+  }
+
+  $node = $form_state->getFormObject()->getEntity();
+  $account = \Drupal::currentUser();
+
+  // True node administrators are all powerful and do NOT get their forms rewritten here.
+  if ($account->hasPermission('bypass node access')) {
+    return;
+  }
+
+  // We figure out what tids we want to show in form according to the forum access settings.
+  $forum_access_settings = forum_access_get_settings_by_roles($account->getRoles(), 'create');
+  $tids = array();
+  foreach ($forum_access_settings as $setting) {
+    $tids[$setting->tid] = $setting->tid;
+  }
+
+  // Also get all forums they happen to be able to moderate.
+  $acl_access_settings = forum_access_get_settings_by_user('forum_access', $account->id(), 'moderate');
+  foreach ($acl_access_settings as $setting) {
+    $tids[$setting->tid] = $setting->tid;
+  }
+
+  // Make available current forum for existed node.
+  if ($node = $form_state->getFormObject()->getEntity()) {
+    $forum_tid = _forum_access_get_tid($node);
+    $tids[$forum_tid] = $forum_tid;
+  }
+
+  // Leave only that forum options for which user has access.
+  $form_options = &$form['taxonomy_forums']['widget']['#options'];
+  foreach ($form_options as $tid => $name) {
+    if (!isset($tids[$tid])) {
+      unset($form_options[$tid]);
+    }
+  }
+}
