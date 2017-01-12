@@ -37,3 +37,12 @@ function forum_access_user_role_delete(Drupal\Core\Entity\EntityInterface $entit
   $config->set('forum_access_roles_gids', $roles_gids);
   $config->save();
 }
+
+/**
+ * Check if user is moderator of specific forum.
+ */
+function forum_access_is_moderator($account, $tid) {
+  $acl_id = acl_get_ids_by_user('forum_access', $account->id(), 'moderate', $tid);
+
+  return !empty($acl_id);
+}

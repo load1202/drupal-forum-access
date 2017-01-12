@@ -5,6 +5,7 @@
  * Integration with node system.
  */
 use Drupal\Core\Access\AccessResult;
+use \Drupal\Core\Render\Element;
 use Drupal\node\Entity\Node;
 use Drupal\node\NodeInterface;
 
@@ -137,6 +138,46 @@ function forum_access_form_node_form_alter(&$form, \Drupal\Core\Form\FormStateIn
     return;
   }
 
+  // Get list of available lists.
+  $tids = forum_access_form_node_form_get_available_tids($account, $node);
+  $forum_tid = _forum_access_get_tid($node);
+
+  // Leave only that forum options for which user has access.
+  $form_options = &$form['taxonomy_forums']['widget']['#options'];
+  foreach ($form_options as $tid => $name) {
+    if (!isset($tids[$tid])) {
+      unset($form_options[$tid]);
+    }
+  }
+
+  // Apply modifications for Moderators (by role or uid).
+  if (!$account->hasPermission('administer nodes') && forum_access_is_moderator($account, $forum_tid)) {
+    foreach (Element::children($form) as $key) {
+      switch ($key) {
+        case 'sticky':
+          $form[$key]['#access'] = TRUE;
+          break;
+        case 'revision':
+          $form['revision']['#access'] = TRUE;
+          break;
+        case 'comment_forum':
+          $form[$key]['#access'] = TRUE;
+          break;
+        case 'shadow':
+          $form[$key]['#description'] .= ' ' . t('Note: Access to this topic and its shadows is controlled by the forum that contains the topic.');
+          break;
+        case 'taxonomy_forums':
+          $form[$key]['widget']['#description'] .= t('Note: Moving a topic to a different forum may change its accessibility.');
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * Get list of available tids for specific account.
+ */
+function forum_access_form_node_form_get_available_tids($account, $node) {
   // We figure out what tids we want to show in form according to the forum access settings.
   $forum_access_settings = forum_access_get_settings_by_roles($account->getRoles(), 'create');
   $tids = array();
@@ -147,20 +188,14 @@ function forum_access_form_node_form_alter(&$form, \Drupal\Core\Form\FormStateIn
   // Also get all forums they happen to be able to moderate.
   $acl_access_settings = forum_access_get_settings_by_user('forum_access', $account->id(), 'moderate');
   foreach ($acl_access_settings as $setting) {
-    $tids[$setting->tid] = $setting->tid;
+    $tids[$setting->figure] = $setting->figure;
   }
 
   // Make available current forum for existed node.
-  if ($node = $form_state->getFormObject()->getEntity()) {
+  if (!empty($node)) {
     $forum_tid = _forum_access_get_tid($node);
     $tids[$forum_tid] = $forum_tid;
   }
 
-  // Leave only that forum options for which user has access.
-  $form_options = &$form['taxonomy_forums']['widget']['#options'];
-  foreach ($form_options as $tid => $name) {
-    if (!isset($tids[$tid])) {
-      unset($form_options[$tid]);
-    }
-  }
+  return $tids;
 }

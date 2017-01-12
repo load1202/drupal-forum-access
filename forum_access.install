@@ -80,6 +80,9 @@ function forum_access_schema() {
  * Implements hook_install().
  */
 function forum_access_install() {
+  // Set the weight of the forum_access.module to 2 so it is loaded after the forum.module.
+  module_set_weight('forum_access', 2);
+
   // Add default values for grants during installation.
   if ($vid = \Drupal::config('forum.settings')->get('vocabulary')) {
     $terms =\Drupal::service('entity_type.manager')

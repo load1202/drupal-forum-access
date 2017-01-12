@@ -83,7 +83,7 @@ function forum_access_access($op, $tid, $account = NULL) {
     }
     else {
       // Check our moderators too.
-      $acl_moderate = acl_get_ids_by_user('forum_access', $account->id(), 'moderate', $tid);
+      $acl_moderate = forum_access_is_moderator($account, $tid);
       $cache[$account->id()][$tid][$op] = !empty($acl_moderate);
     }
   }
