@@ -58,7 +58,7 @@ function forum_access_access($op, $tid, $account = NULL) {
   }
 
   if ($op == 'update' && $account->hasPermission('edit any forum content')) {
-    return 1;
+    return TRUE;
   }
 
   if (!isset($cache[$account->id()][$tid][$op])) {

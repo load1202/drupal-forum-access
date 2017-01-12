@@ -40,7 +40,11 @@ function forum_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal
  */
 function forum_access_node_grants(\Drupal\Core\Session\AccountInterface $account, $op) {
   $roles_gids = \Drupal::configFactory()->getEditable('forum_access.settings')->get('forum_access_roles_gids');
-  $grants['forum_access'] = $roles_gids;
+
+  foreach($account->getRoles() as $role) {
+    $grants['forum_access'][] = $roles_gids[$role];
+  }
+
   return $grants;
 }
 
