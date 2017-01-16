@@ -46,3 +46,15 @@ function forum_access_theme($existing, $type, $theme, $path) {
 
   return $result;
 }
+
+/**
+ * This is also required by ACL module.
+ * @see acl_node_access_records().
+ */
+function forum_access_enabled($set = NULL) {
+  static $enabled = TRUE; // not drupal_static!
+  if ($set !== NULL) {
+    $enabled = $set;
+  }
+  return $enabled;
+}

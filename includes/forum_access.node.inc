@@ -134,6 +134,41 @@ function forum_access_node_access_records(\Drupal\node\NodeInterface $node) {
 }
 
 /**
+ * Implements hook_ENTITY_TYPE_insert().
+ */
+function forum_access_node_insert(Drupal\Core\Entity\EntityInterface $entity) {
+  if ($entity->bundle() != 'forum') {
+    return;
+  }
+
+  if ($tid = _forum_access_get_tid($entity)) {
+    $acl_id = _forum_access_get_acl($tid, 'moderate');
+    acl_node_add_acl($entity->id(), $acl_id, 1, 1, 1);
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_update().
+ */
+function forum_access_node_update(Drupal\Core\Entity\EntityInterface $entity) {
+  if ($entity->bundle() != 'forum') {
+    return;
+  }
+
+  $old_tid = _forum_access_get_tid($entity->original);
+  $current_tid = _forum_access_get_tid($entity);
+  if (isset($old_tid)) {
+    if ($current_tid == $old_tid) {
+      return;
+    }
+    acl_node_clear_acls($entity->id(), 'forum_access');
+  }
+
+  // For changed and for previously unassigned terms we need to fake an insert.
+  forum_access_node_insert($entity);
+}
+
+/**
  * Implements hook_ENTITY_TYPE_view_alter().
  */
 function forum_access_node_view_alter(array &$build, Drupal\Core\Entity\EntityInterface $entity, \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display) {
