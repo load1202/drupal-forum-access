@@ -6,6 +6,7 @@
  */
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\node\Entity\Node;
 use Drupal\taxonomy\Entity\Vocabulary;
 
 /**
@@ -22,7 +23,39 @@ function forum_access_form_taxonomy_term_forums_forum_form_alter(&$form, \Drupal
   $form['forum_access']['permissions'] = _forum_access_forum_permissions_form();
   $form['forum_access']['grants'] = _forum_access_forum_grants_form($form_state, $settings);
   $form['forum_access']['moderators'] = _forum_access_forum_moderators_form($form_state, $tid);
-  $form['actions']['submit']['#submit'][] = '_forum_access_form_submit';
+  $form['actions']['submit']['#submit'][] = '_forum_access_admin_forum_form_submit';
+
+  if (isset($tid) && !node_access_needs_rebuild()) {
+    // Count number of nodes which are attached to this term.
+    $count = db_query("SELECT COUNT(DISTINCT ti.nid) FROM {taxonomy_index} ti WHERE ti.tid = :tid", array(
+      ':tid' => $tid,
+    ))->fetchField();
+
+    $limit = $threshold = 20;
+
+    $form['forum_access']['update_limit'] = array(
+      '#type' => 'value',
+      '#value' => $limit,
+    );
+    $form['forum_access']['update_choice'] = array(
+      '#type' => 'radios',
+      '#title' => t('Update the permissions'),
+      '#description' => t('<em>If</em> you make any node access changes, then each node in this forum needs to be updated. Hover over the radiobuttons for details.'),
+      '#options' => array(
+        'all' => t('for all %count nodes immediately', array('%count' => $count)),
+        'batch' => t('in batches of :limit now', array(':limit' => $limit)),
+        'later' => t('rebuild <strong>all</strong> permissions later'),
+      ),
+      '#default_value' => 'batch',
+    );
+  }
+
+  if (isset($tid)) {
+    $form['forum_access']['force_update'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Update even if unchanged'),
+    );
+  }
 }
 
 /**
@@ -62,7 +95,21 @@ function _forum_access_forum_moderators_form($form_state, $tid) {
 /**
  * Submit handler for forum access administrative form.
  */
-function _forum_access_form_submit($form, FormStateInterface $form_state) {
+function _forum_access_admin_forum_form_submit($form, FormStateInterface $form_state) {
+  // Save roles permissions.
+  _forum_access_form_roles_permissions_save($form_state);
+
+  // Save moderators list.
+  _forum_access_form_moderators_save($form_state);
+
+  // Update access records.
+  _forum_access_update_access_records($form_state);
+}
+
+/**
+ * Submit handler for container access administrative form.
+ */
+function _forum_access_admin_container_form_submit($form, FormStateInterface $form_state) {
   // Save roles permissions.
   _forum_access_form_roles_permissions_save($form_state);
 
@@ -125,6 +172,97 @@ function _forum_access_form_roles_permissions_save(FormStateInterface $form_stat
 }
 
 /**
+ * Update access records.
+ */
+function _forum_access_update_access_records($form_state) {
+  $tid = $form_state->getValue('tid');
+  $forum_access = $form_state->getValue('forum_access');
+
+  switch ($forum_access['update_choice']) {
+    case 'all':
+      node_access_rebuild(TRUE);
+      break;
+
+    case 'batch':
+      // Mass update in batch mode, modeled after node.module.
+      $limit = $forum_access['update_limit'];
+      $count = db_query("SELECT COUNT(DISTINCT ti.nid) FROM {taxonomy_index} ti WHERE ti.tid = :tid", array(
+        ':tid' => (int) $tid,
+      ))->fetchField();
+
+      $batch = array(
+        'title' => t('Updating content access permissions'),
+        'operations' => array(
+          array('_forum_access_update_batch_operation', array($tid, $limit, $count)),
+        ),
+        'finished' => '_forum_access_update_batch_finished'
+      );
+      batch_set($batch);
+      break;
+
+    case 'later':
+      node_access_needs_rebuild(TRUE);
+      break;
+  }
+}
+
+/**
+ * Ooperations for batch.
+ */
+function _forum_access_update_batch_operation($tid, $limit, $count, &$context) {
+  $node_storage = \Drupal::entityManager()->getStorage('node');
+  if (empty($context['sandbox'])) {
+    // Initiate multistep processing.
+    $context['sandbox']['progress'] = 0;
+    $context['sandbox']['current_node'] = 0;
+    $context['sandbox']['max'] = $count;
+  }
+
+  $nids = \Drupal::entityQuery('node')
+    ->condition('nid', $context['sandbox']['current_node'], '>')
+    ->sort('nid', 'ASC')
+    // Disable access checking since all nodes must be processed even if the
+    // user does not have access. And unless the current user has the bypass
+    // node access permission, no nodes are accessible since the grants have
+    // just been deleted.
+    ->accessCheck(FALSE)
+    ->condition("taxonomy_forums.target_id", $tid, '=')
+    ->execute();
+  $node_storage->resetCache($nids);
+  $nodes = Node::loadMultiple($nids);
+  foreach ($nodes as $nid => $node) {
+    // To preserve database integrity, only write grants if the node
+    // loads successfully.
+    if (!empty($node)) {
+      /** @var \Drupal\node\NodeAccessControlHandlerInterface $access_control_handler */
+      $access_control_handler = \Drupal::entityManager()->getAccessControlHandler('node');
+      $grants = $access_control_handler->acquireGrants($node);
+      \Drupal::service('node.grant_storage')->write($node, $grants);
+    }
+    $context['sandbox']['progress']++;
+    $context['sandbox']['current_node'] = $nid;
+  }
+
+  // Multistep processing : report progress.
+  if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+    $context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+  }
+}
+
+/**
+ * Post-processing for forum_access_form_submit().
+ */
+function _forum_access_update_batch_finished($success, $results, $operations) {
+  if ($success) {
+    drupal_set_message(t('The content access permissions have been updated.'));
+    node_access_needs_rebuild(FALSE);
+  }
+  else {
+    drupal_set_message(t('The content access permissions have not been properly updated.'), 'error');
+  }
+}
+
+/**
  * Implements hook_form_FORM_ID_alter().
  */
 function forum_access_form_taxonomy_term_forums_container_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
@@ -137,7 +275,7 @@ function forum_access_form_taxonomy_term_forums_container_form_alter(&$form, \Dr
   // Moderators fields.
   $form['forum_access']['grants'] = _forum_access_container_grants_form($form_state, $settings);
   $form['forum_access']['moderators'] = _forum_access_forum_moderators_form($form_state, $tid);
-  $form['actions']['submit']['#submit'][] = '_forum_access_form_submit';
+  $form['actions']['submit']['#submit'][] = '_forum_access_admin_container_form_submit';
 }
 
 /**
