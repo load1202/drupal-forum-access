@@ -115,15 +115,19 @@ function forum_access_node_access_records(\Drupal\node\NodeInterface $node) {
         if (isset($seers[$grant->rid])) {
           continue; // Don't provide any useless grants!
         }
-        $grants[$tid][] = array(
-          'realm'        => 'forum_access',
-          // We change machine_name of role to its numeric equivalent.
-          'gid'          => $roles_gids[$grant->rid],
-          'grant_view'   => $grant->grant_view,
-          'grant_update' => $grant->grant_update,
-          'grant_delete' => $grant->grant_delete,
-          'priority'     => $grant->priority,
-        );
+
+        // We want to give our rights only for published nodes.
+        if ($node->isPublished()) {
+          $grants[$tid][] = array(
+            'realm'        => 'forum_access',
+            // We change machine_name of role to its numeric equivalent.
+            'gid'          => $roles_gids[$grant->rid],
+            'grant_view'   => $grant->grant_view,
+            'grant_update' => $grant->grant_update,
+            'grant_delete' => $grant->grant_delete,
+            'priority'     => $grant->priority,
+          );
+        }
       }
     }
 
