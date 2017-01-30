@@ -95,7 +95,7 @@ function forum_access_access($op, $tid, $account = NULL) {
  * Get forum tid from entity.
  */
 function _forum_access_get_tid($entity) {
-  if ($taxonomy_forum = $entity->get('taxonomy_forums')->first()) {
+  if ($entity->hasField('taxonomy_forums') && $taxonomy_forum = $entity->get('taxonomy_forums')->first()) {
     return $taxonomy_forum->getValue()['target_id'];
   }
 }

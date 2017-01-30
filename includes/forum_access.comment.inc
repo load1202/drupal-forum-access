@@ -19,7 +19,7 @@ function forum_access_query_comment_filter_alter(Drupal\Core\Database\Query\Alte
   }
 
   // @todo Replace it with the function.
-  $tid = $entity->get('taxonomy_forums')->first()->getValue()['target_id'];
+  $tid = _forum_access_get_tid($entity);
   $access = array(
     'update' => forum_access_access('update', $tid),
     'delete' => forum_access_access('delete', $tid)
