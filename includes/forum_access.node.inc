@@ -47,7 +47,12 @@ function forum_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal
 
   switch($op) {
     case 'view':
-      $access = forum_access_entity_access_by_tid($op, $node);
+      if ($node->isPublished()) {
+        $access = forum_access_entity_access_by_tid($op, $node);
+      } else {
+        if ($author->id() == $account->id() && $account->hasPermission('view own unpublished content'))
+          $access = forum_access_entity_access_by_tid($op, $node);
+      }
       break;
 
     case 'update':
