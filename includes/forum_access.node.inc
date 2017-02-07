@@ -49,9 +49,9 @@ function forum_access_node_access(\Drupal\node\NodeInterface $node, $op, \Drupal
     case 'view':
       if ($node->isPublished()) {
         $access = forum_access_entity_access_by_tid($op, $node);
-      } else {
-        if ($author->id() == $account->id() && $account->hasPermission('view own unpublished content'))
-          $access = forum_access_entity_access_by_tid($op, $node);
+      }
+      elseif ($author->id() == $account->id() && $account->hasPermission('view own unpublished content')) {
+        $access = forum_access_entity_access_by_tid($op, $node);
       }
       break;
 
