@@ -54,7 +54,6 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
     return AccessResult::neutral();
   }
 
-  // @todo Check for approve.
   if ($account->hasPermission('administer comments')) {
     return AccessResult::neutral();
   }
@@ -64,12 +63,18 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
     // Check if user is author of comment.
     $is_author = $account->id() == $comment_author->id();
 
+    // Update operation.
     if ($operation == 'update'
         && (forum_access_access('update', $tid) || $account->hasPermission('edit any forum content') || $is_author && $account->hasPermission('edit own forum content'))) {
       return AccessResult::allowed();
     }
+    // Delete operation.
     elseif ($operation == 'delete'
         && (forum_access_access('delete', $tid) || $account->hasPermission('delete any forum content') || $is_author && $account->hasPermission('delete own forum content'))) {
+      return AccessResult::allowed();
+    }
+    // Approve operation.
+    elseif ($operation == 'approve' && (forum_access_access('update', $tid) || forum_access_access('delete', $tid))) {
       return AccessResult::allowed();
     }
   }
