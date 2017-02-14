@@ -63,8 +63,12 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
     // Check if user is author of comment.
     $is_author = $account->id() == $comment_author->id();
 
+    // View operation.
+    if ($operation == 'view' && forum_access_access('view', $tid)) {
+      return AccessResult::neutral();
+    }
     // Update operation.
-    if ($operation == 'update'
+    elseif ($operation == 'update'
         && (forum_access_access('update', $tid) || $account->hasPermission('edit any forum content') || $is_author && $account->hasPermission('edit own forum content'))) {
       return AccessResult::allowed();
     }
