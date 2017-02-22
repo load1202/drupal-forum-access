@@ -153,6 +153,14 @@ function forum_access_node_insert(Drupal\Core\Entity\EntityInterface $entity) {
     $acl_id = _forum_access_get_acl($tid, 'moderate');
     acl_node_add_acl($entity->id(), $acl_id, 1, 1, 1);
   }
+  
+  $node = Node::load($entity->id());
+  // To preserve database integrity, only write grants if the node
+  // loads successfully.
+  if (!empty($node)) {
+    $grants = \Drupal::moduleHandler()->invoke('acl', 'node_access_records', array($node));
+    \Drupal::service('node.grant_storage')->write($node, $grants);
+  }
 }
 
 /**
