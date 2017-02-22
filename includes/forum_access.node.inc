@@ -111,18 +111,17 @@ function forum_access_node_access_records(\Drupal\node\NodeInterface $node) {
   $roles_gids = \Drupal::configFactory()->getEditable('forum_access.settings')->get('forum_access_roles_gids');
 
   if ($tid) {
-    if (!isset($grants[$tid])) {
-      if (!isset($seers)) {
-        $seers = user_roles(FALSE, 'bypass node access');
-      }
-      $result = forum_access_get_grants_by_tid($tid);
-      foreach ($result as $grant) {
-        if (isset($seers[$grant->rid])) {
-          continue; // Don't provide any useless grants!
+    // We want to give our rights only for published nodes.
+    if ($node->isPublished()) {
+      if (!isset($grants[$tid])) {
+        if (!isset($seers)) {
+          $seers = user_roles(FALSE, 'bypass node access');
         }
-
-        // We want to give our rights only for published nodes.
-        if ($node->isPublished()) {
+        $result = forum_access_get_grants_by_tid($tid);
+        foreach ($result as $grant) {
+          if (isset($seers[$grant->rid])) {
+            continue; // Don't provide any useless grants!
+          }
           $grants[$tid][] = array(
             'realm'        => 'forum_access',
             // We change machine_name of role to its numeric equivalent.
@@ -134,10 +133,10 @@ function forum_access_node_access_records(\Drupal\node\NodeInterface $node) {
           );
         }
       }
-    }
 
-    if (isset($grants[$tid])) {
-      return $grants[$tid];
+      if (isset($grants[$tid])) {
+        return $grants[$tid];
+      }
     }
   }
 }
