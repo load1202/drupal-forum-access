@@ -27,7 +27,7 @@ function forum_access_form_taxonomy_term_forums_forum_form_alter(&$form, \Drupal
 
   if (isset($tid) && !node_access_needs_rebuild()) {
     // Count number of nodes which are attached to this term.
-    $count = db_query("SELECT COUNT(DISTINCT ti.nid) FROM {taxonomy_index} ti WHERE ti.tid = :tid", array(
+    $count = db_query("SELECT COUNT(DISTINCT ti.entity_id) FROM {node__taxonomy_forums} ti WHERE ti.taxonomy_forums_target_id = :tid", array(
       ':tid' => $tid,
     ))->fetchField();
 
@@ -186,7 +186,7 @@ function _forum_access_update_access_records($form_state) {
     case 'batch':
       // Mass update in batch mode, modeled after node.module.
       $limit = $forum_access['update_limit'];
-      $count = db_query("SELECT COUNT(DISTINCT ti.nid) FROM {taxonomy_index} ti WHERE ti.tid = :tid", array(
+      $count = db_query("SELECT COUNT(DISTINCT ti.entity_id) FROM {node__taxonomy_forums} ti WHERE ti.taxonomy_forums_target_id = :tid", array(
         ':tid' => (int) $tid,
       ))->fetchField();
 
