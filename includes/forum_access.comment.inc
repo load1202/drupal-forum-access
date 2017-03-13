@@ -59,6 +59,11 @@ function forum_access_comment_access(\Drupal\Core\Entity\EntityInterface $entity
   }
 
   if ($tid = _forum_access_get_tid($parent)) {
+    // Disallow if user has no access to view.
+    if (!forum_access_access('view', $tid)) {
+      return AccessResult::forbidden();
+    }
+    
     $comment_author = $entity->get('uid')->first()->get('entity')->getTarget()->getValue();
     // Check if user is author of comment.
     $is_author = $account->id() == $comment_author->id();
